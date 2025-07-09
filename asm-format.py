@@ -26,25 +26,44 @@ class Formatter:
         lines = content.split("\n")
         return [line.rstrip() for line in lines]
 
+    def write_line_formatted(self, line, outfile):
+        tokens = line.split()
+        in_macro = False
+
+        if len(tokens) == 0:
+            print(file=outfile)
+        else:
+            if tokens[0] == "MACRO":
+                in_macro = True
+                print(line, file=outfile)
+            elif tokens[0] == "ENDMACRO":
+                in_macro = False
+                print(line, file=outfile)
+            elif not in_macro:
+                if tokens[0].upper() in self.mnemonics:
+                    mnemonic = (
+                        tokens[0].upper()
+                        if self.config["upperCaseMnemonics"]
+                        else tokens[0].lower()
+                    )
+                    print(
+                        " " * self.config["indent"]
+                        + mnemonic
+                        + line.strip()[len(mnemonic) :],
+                        file=outfile,
+                    )
+                elif tokens[0][-1] == ":" and self.config["newlineAfterLabel"]:
+                    print(tokens[0], file=outfile)
+                    self.write_line_formatted(line[line.find(":")+1 :], outfile)
+                else:
+                    print(line, file=outfile)
+
     def write_formatted(self, lines, outfile):
         while len(lines) > 0 and lines[-1].strip() == "":
             lines.pop()
 
-        in_macro = False
-
         for line in lines:
-            tokens = line.split()
-            if len(tokens) == 0:
-                print(file=outfile)
-            else:
-                if tokens[0] == "MACRO":
-                    in_macro = True
-                elif tokens[0] == "ENDMACRO":
-                    in_macro = False
-                if not in_macro and tokens[0] in self.mnemonics:
-                    print(" " * self.config["indent"] + line.strip(), file=outfile)
-                else:
-                    print(line, file=outfile)
+            self.write_line_formatted(line, outfile)
 
 
 def main():
@@ -64,7 +83,7 @@ def main():
         "r",
     ) as z80_mnemonics_file:
         z80_mnemonics = z80_mnemonics_file.read().splitlines()
-    config = {"indent": 2}
+    config = {"indent": 2, "upperCaseMnemonics": True, "newlineAfterLabel": True}
     formatter = Formatter(config, z80_mnemonics)
 
     for infile in args.infiles:
