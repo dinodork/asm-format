@@ -1,0 +1,5 @@
+architecture: z80
+assembler: sjasmplus
+indent: 2
+upperCaseMnemonics: True
+newlineAfterLabel: True

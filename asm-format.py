@@ -2,8 +2,10 @@
 
 import argparse
 import sys
-import re
+import yaml
 import os
+
+homedir = os.path.dirname(os.path.realpath(__file__))
 
 
 class Formatter:
@@ -53,8 +55,10 @@ class Formatter:
                         file=outfile,
                     )
                 elif tokens[0][-1] == ":" and self.config["newlineAfterLabel"]:
-                    print(tokens[0], file=outfile)
-                    self.write_line_formatted(line[line.find(":")+1 :], outfile)
+                    print(tokens[0].strip(), file=outfile)
+                    remaining_line = line[line.find(":") + 1 :].rstrip()
+                    if remaining_line != "":
+                        self.write_line_formatted(remaining_line, outfile)
                 else:
                     print(line, file=outfile)
 
@@ -64,6 +68,11 @@ class Formatter:
 
         for line in lines:
             self.write_line_formatted(line, outfile)
+
+
+def read_config():
+    with open(f"{homedir}/defaults.asm-format") as config_file:
+        return yaml.safe_load(config_file)
 
 
 def main():
@@ -78,13 +87,23 @@ def main():
     )
 
     args = parser.parse_args()
+
+    config = read_config()
+
     with open(
-        f"{os.path.dirname(os.path.realpath(__file__))}/architectures/z80/mnemonics.txt",
+        f"{homedir}/architectures/{config['architecture']}/mnemonics.txt",
         "r",
-    ) as z80_mnemonics_file:
-        z80_mnemonics = z80_mnemonics_file.read().splitlines()
-    config = {"indent": 2, "upperCaseMnemonics": True, "newlineAfterLabel": True}
-    formatter = Formatter(config, z80_mnemonics)
+    ) as architecture_mnemonics_file:
+        mnemonics = architecture_mnemonics_file.read().splitlines()
+
+    with open(
+        f"{homedir}/assemblers/{config['assembler']}/mnemonics.txt",
+        "r",
+    ) as assembler_mnemonics_file:
+        mnemonics += assembler_mnemonics_file.read().splitlines()
+
+    config = read_config()
+    formatter = Formatter(config, mnemonics)
 
     for infile in args.infiles:
         if args.in_place:
